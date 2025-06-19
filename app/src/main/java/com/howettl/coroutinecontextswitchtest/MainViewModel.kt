@@ -54,7 +54,14 @@ class MainViewModel : ViewModel() {
             decrementWithoutSwitching(startValue)
         }
         val delta = System.currentTimeMillis() - startTime
-        _viewState.update { it.copy(runState = Complete(delta)) }
+        _viewState.update {
+            it.copy(
+                runState = Complete(
+                    duration = delta,
+                    costPerIteration = "%.3f".format(delta.toFloat() / startValue.toFloat()),
+                )
+            )
+        }
     }
 
     private fun decrementWithoutSwitching(@Suppress("SameParameterValue") startValue: Int) {
@@ -82,6 +89,6 @@ class MainViewModel : ViewModel() {
     sealed interface RunState {
         data object NotStarted : RunState
         data object Running : RunState
-        data class Complete(val duration: Long) : RunState
+        data class Complete(val duration: Long, val costPerIteration: String) : RunState
     }
 }

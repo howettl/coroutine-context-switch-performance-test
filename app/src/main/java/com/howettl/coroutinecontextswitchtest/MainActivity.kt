@@ -108,7 +108,7 @@ class MainActivity : ComponentActivity() {
                     Spacer(Modifier.height(48.dp))
                     Text(
                         text = when (runState) {
-                            is Complete -> "Status: Complete! Total duration: ${runState.duration}ms."
+                            is Complete -> "Status: Complete! Total duration: ${runState.duration}ms. Cost per iteration: ${runState.costPerIteration}ms."
                             NotStarted -> "Status: Not started yet."
                             Running -> "Status: Running..."
                         }
@@ -122,7 +122,7 @@ class MainActivity : ComponentActivity() {
     @Preview
     private fun ContentPreview() {
         Content(
-            runState = NotStarted,
+            runState = Complete(duration = 20000, costPerIteration = "0.003"),
             useCoroutineContextSwitching = true,
             totalIterations = 2000,
         )
