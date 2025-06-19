@@ -70,9 +70,6 @@ class MainViewModel : ViewModel() {
             withContext(Dispatchers.Default) {
                 count--
             }
-            withContext(Dispatchers.Main) {
-                count--
-            }
         }
     }
 

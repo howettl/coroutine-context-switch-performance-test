@@ -43,8 +43,8 @@ class MainActivity : ComponentActivity() {
             Content(
                 runState = viewState.value.runState,
                 useCoroutineContextSwitching = viewState.value.useCoroutineContextSwitching,
-                toggleUseContextSwitching = { viewModel.toggleUseContextSwitching() },
-                startOrCancelRun = { viewModel.startOrCancelRun() },
+                toggleUseContextSwitching = viewModel::toggleUseContextSwitching,
+                startOrCancelRun = viewModel::startOrCancelRun,
                 totalIterations = viewState.value.totalIterations,
                 onTotalIterationsUpdated = viewModel::updateTotalIterations,
             )
@@ -68,10 +68,12 @@ class MainActivity : ComponentActivity() {
                         .padding(innerPadding)
                         .padding(24.dp)
                 ) {
+                    val settingsChangeEnabled = runState == NotStarted || runState is Complete
                     Row(
                         Modifier.clickable(
-                            enabled = runState == NotStarted || runState is Complete,
-                        ) { toggleUseContextSwitching() },
+                            enabled = settingsChangeEnabled,
+                            onClick = toggleUseContextSwitching,
+                        ),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text("Enable coroutine context switching")
@@ -79,7 +81,7 @@ class MainActivity : ComponentActivity() {
                         Switch(
                             checked = useCoroutineContextSwitching,
                             onCheckedChange = { toggleUseContextSwitching() },
-                            enabled = runState == NotStarted || runState is Complete,
+                            enabled = settingsChangeEnabled,
                         )
                     }
                     Spacer(Modifier.height(12.dp))
@@ -95,7 +97,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     Spacer(Modifier.height(24.dp))
-                    Button(onClick = startOrCancelRun, Modifier.align(Alignment.CenterHorizontally)) {
+                    Button(onClick = startOrCancelRun) {
                         Text(
                             when (runState) {
                                 is Complete, NotStarted -> "Start!"
@@ -104,17 +106,13 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     Spacer(Modifier.height(48.dp))
-                    Row {
-                        Text("Status:")
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = when (runState) {
-                                is Complete -> "Complete! Total duration: ${runState.duration}ms."
-                                NotStarted -> "Not started yet."
-                                Running -> "Running..."
-                            }
-                        )
-                    }
+                    Text(
+                        text = when (runState) {
+                            is Complete -> "Status: Complete! Total duration: ${runState.duration}ms."
+                            NotStarted -> "Status: Not started yet."
+                            Running -> "Status: Running..."
+                        }
+                    )
                 }
             }
         }
