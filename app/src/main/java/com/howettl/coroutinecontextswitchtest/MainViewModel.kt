@@ -5,12 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.howettl.coroutinecontextswitchtest.MainViewModel.RunState.Complete
 import com.howettl.coroutinecontextswitchtest.MainViewModel.RunState.NotStarted
 import com.howettl.coroutinecontextswitchtest.MainViewModel.RunState.Running
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainViewModel : ViewModel() {
 
@@ -18,13 +20,15 @@ class MainViewModel : ViewModel() {
     val viewState: StateFlow<ViewState>
         get() = _viewState.asStateFlow()
 
-    fun startRun() {
-        viewModelScope.launch {
-            _viewState.update { it.copy(runState = Running) }
-            val startTime = System.currentTimeMillis()
-            delay(10000)
-            val delta = System.currentTimeMillis() - startTime
-            _viewState.update { it.copy(runState = Complete(delta)) }
+    private lateinit var testRunJob: Job
+
+    fun startOrCancelRun() {
+        when (viewState.value.runState) {
+            is Complete, NotStarted -> testRunJob = performTestRun(viewState.value.useCoroutineContextSwitching)
+            Running -> {
+                testRunJob.cancel()
+                _viewState.update { it.copy(runState = NotStarted) }
+            }
         }
     }
 
@@ -36,9 +40,46 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    fun updateTotalIterations(newCount: Int) {
+        _viewState.update { it.copy(totalIterations = newCount) }
+    }
+
+    private fun performTestRun(useContextSwitching: Boolean) = viewModelScope.launch {
+        _viewState.update { it.copy(runState = Running) }
+        val startValue = viewState.value.totalIterations
+        val startTime = System.currentTimeMillis()
+        if (useContextSwitching) {
+            decrementWithSwitching(startValue)
+        } else {
+            decrementWithoutSwitching(startValue)
+        }
+        val delta = System.currentTimeMillis() - startTime
+        _viewState.update { it.copy(runState = Complete(delta)) }
+    }
+
+    private fun decrementWithoutSwitching(@Suppress("SameParameterValue") startValue: Int) {
+        var count = startValue
+        while (count > 0) {
+            count--
+        }
+    }
+
+    private suspend fun decrementWithSwitching(startValue: Int) {
+        var count = startValue
+        while (count > 0) {
+            withContext(Dispatchers.Default) {
+                count--
+            }
+            withContext(Dispatchers.Main) {
+                count--
+            }
+        }
+    }
+
     data class ViewState(
         val runState: RunState = NotStarted,
         val useCoroutineContextSwitching: Boolean = true,
+        val totalIterations: Int = 2000,
     )
 
     sealed interface RunState {

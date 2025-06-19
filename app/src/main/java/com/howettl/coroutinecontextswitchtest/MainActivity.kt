@@ -13,13 +13,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.howettl.coroutinecontextswitchtest.MainViewModel.RunState.Complete
 import com.howettl.coroutinecontextswitchtest.MainViewModel.RunState.NotStarted
@@ -34,43 +39,94 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            CoroutineContextSwitchTestTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Column(
-                        Modifier
-                            .padding(innerPadding)
-                            .padding(24.dp)) {
-                        val viewState = viewModel.viewState.collectAsState()
-                        Row(
-                            Modifier.clickable { viewModel.toggleUseContextSwitching() },
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Switch(
-                                checked = viewState.value.useCoroutineContextSwitching,
-                                onCheckedChange = { viewModel.toggleUseContextSwitching() }
+            val viewState = viewModel.viewState.collectAsState()
+            Content(
+                runState = viewState.value.runState,
+                useCoroutineContextSwitching = viewState.value.useCoroutineContextSwitching,
+                toggleUseContextSwitching = { viewModel.toggleUseContextSwitching() },
+                startOrCancelRun = { viewModel.startOrCancelRun() },
+                totalIterations = viewState.value.totalIterations,
+                onTotalIterationsUpdated = viewModel::updateTotalIterations,
+            )
+        }
+    }
+
+    @Composable
+    private fun Content(
+        modifier: Modifier = Modifier,
+        runState: MainViewModel.RunState,
+        useCoroutineContextSwitching: Boolean,
+        startOrCancelRun: () -> Unit = {},
+        toggleUseContextSwitching: () -> Unit = {},
+        totalIterations: Int,
+        onTotalIterationsUpdated: (Int) -> Unit = {},
+    ) {
+        CoroutineContextSwitchTestTheme {
+            Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
+                Column(
+                    Modifier
+                        .padding(innerPadding)
+                        .padding(24.dp)
+                ) {
+                    Row(
+                        Modifier.clickable(
+                            enabled = runState == NotStarted || runState is Complete,
+                        ) { toggleUseContextSwitching() },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Enable coroutine context switching")
+                        Spacer(Modifier.width(8.dp))
+                        Switch(
+                            checked = useCoroutineContextSwitching,
+                            onCheckedChange = { toggleUseContextSwitching() },
+                            enabled = runState == NotStarted || runState is Complete,
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Total iterations")
+                        Spacer(Modifier.width(8.dp))
+                        TextField(
+                            value = totalIterations.toString(),
+                            onValueChange = { onTotalIterationsUpdated(it.toInt()) },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number
                             )
-                            Spacer(Modifier.width(8.dp))
-                            Text("Enable coroutine context switching")
-                        }
-                        Spacer(Modifier.height(24.dp))
-                        Button(onClick = viewModel::startRun, Modifier.align(Alignment.CenterHorizontally)) {
-                            Text("Start!")
-                        }
-                        Spacer(Modifier.height(48.dp))
-                        Row {
-                            Text("Status:")
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = when (val result = viewState.value.runState) {
-                                    is Complete -> "Complete! Total duration: ${result.duration}ms."
-                                    NotStarted -> "Not started yet."
-                                    Running -> "Running..."
-                                }
-                            )
-                        }
+                        )
+                    }
+                    Spacer(Modifier.height(24.dp))
+                    Button(onClick = startOrCancelRun, Modifier.align(Alignment.CenterHorizontally)) {
+                        Text(
+                            when (runState) {
+                                is Complete, NotStarted -> "Start!"
+                                Running -> "Cancel"
+                            }
+                        )
+                    }
+                    Spacer(Modifier.height(48.dp))
+                    Row {
+                        Text("Status:")
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = when (runState) {
+                                is Complete -> "Complete! Total duration: ${runState.duration}ms."
+                                NotStarted -> "Not started yet."
+                                Running -> "Running..."
+                            }
+                        )
                     }
                 }
             }
         }
+    }
+
+    @Composable
+    @Preview
+    private fun ContentPreview() {
+        Content(
+            runState = NotStarted,
+            useCoroutineContextSwitching = true,
+            totalIterations = 2000,
+        )
     }
 }
